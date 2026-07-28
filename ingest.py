@@ -6,10 +6,12 @@ Two modes:
 """
 
 import base64
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from email.utils import getaddresses, parseaddr
 
+from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 import db
@@ -17,6 +19,21 @@ import db
 # Gmail allows ~250 quota units/user/second; messages.get costs 5.
 # 5 workers keeps us comfortably under while still being ~5x faster than serial.
 MAX_WORKERS = 5
+
+# The googleapiclient service object wraps a single network connection that
+# is NOT safe to share across threads - concurrent use corrupts the TLS
+# state and throws intermittent SSL errors ("bad record mac"). Each worker
+# thread gets its own private service instance instead, built once and
+# reused only by that thread.
+_thread_local = threading.local()
+
+
+def _thread_service(credentials):
+    if not hasattr(_thread_local, "service"):
+        _thread_local.service = build(
+            "gmail", "v1", credentials=credentials, cache_discovery=False
+        )
+    return _thread_local.service
 
 
 # --------------------------------------------------------------------------
@@ -95,8 +112,13 @@ def parse_message(raw: dict) -> dict:
 # Fetching
 # --------------------------------------------------------------------------
 
-def _fetch_one(service, msg_id: str, retries: int = 3) -> dict | None:
-    """Fetch a single message, backing off on rate limits."""
+def _fetch_one(credentials, msg_id: str, retries: int = 3) -> dict | None:
+    """Fetch a single message, backing off on rate limits.
+
+    Takes credentials rather than a service object so each thread can build
+    (and reuse) its own private connection - see _thread_service above.
+    """
+    service = _thread_service(credentials)
     for attempt in range(retries):
         try:
             return (
@@ -135,13 +157,18 @@ def _list_message_ids(service, query: str | None, max_messages: int | None) -> l
     return ids[:max_messages] if max_messages else ids
 
 
-def _fetch_and_store(service, conn, msg_ids: list[str]) -> int:
-    """Fetch messages in parallel, parse, and write to SQLite."""
+def _fetch_and_store(service, conn, msg_ids: list[str], credentials) -> int:
+    """Fetch messages in parallel, parse, and write to SQLite.
+
+    `service` is used for nothing here except staying consistent with the
+    rest of the module's signatures; the parallel fetches use `credentials`
+    directly so each thread can build its own private connection.
+    """
     stored = 0
 
     # Writes stay on the main thread - SQLite connections aren't thread-safe.
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
-        for i, raw in enumerate(pool.map(lambda m: _fetch_one(service, m), msg_ids), 1):
+        for i, raw in enumerate(pool.map(lambda m: _fetch_one(credentials, m), msg_ids), 1):
             if raw is None:
                 continue
             db.upsert_message(conn, parse_message(raw))
@@ -159,7 +186,9 @@ def _fetch_and_store(service, conn, msg_ids: list[str]) -> int:
 # Sync modes
 # --------------------------------------------------------------------------
 
-def full_sync(service, conn, query: str | None = None, max_messages: int | None = None) -> int:
+def full_sync(
+    service, conn, credentials, query: str | None = None, max_messages: int | None = None
+) -> int:
     """Walk the mailbox and store everything matching `query`.
 
     Capture historyId BEFORE fetching, so anything that arrives mid-sync gets
@@ -181,7 +210,7 @@ def full_sync(service, conn, query: str | None = None, max_messages: int | None 
         db.set_state(conn, "last_history_id", start_history_id)
         return 0
 
-    stored = _fetch_and_store(service, conn, new_ids)
+    stored = _fetch_and_store(service, conn, new_ids, credentials)
 
     db.set_state(conn, "last_history_id", start_history_id)
     db.set_state(conn, "last_full_sync", time.strftime("%Y-%m-%d %H:%M:%S"))
@@ -189,7 +218,7 @@ def full_sync(service, conn, query: str | None = None, max_messages: int | None 
     return stored
 
 
-def incremental_sync(service, conn) -> int:
+def incremental_sync(service, conn, credentials) -> int:
     """Fetch only what changed since the last recorded historyId.
 
     Gmail only retains history for about a week. If our stored id is older than
@@ -220,7 +249,7 @@ def incremental_sync(service, conn) -> int:
         except HttpError as e:
             if e.resp.status == 404:
                 print("historyId too old (Gmail keeps ~1 week). Falling back to full sync.")
-                return full_sync(service, conn)
+                return full_sync(service, conn, credentials)
             raise
 
         for record in resp.get("history", []):
@@ -237,7 +266,7 @@ def incremental_sync(service, conn) -> int:
 
     print(f"{len(new_ids)} new message events, {len(to_fetch)} to fetch")
 
-    stored = _fetch_and_store(service, conn, to_fetch) if to_fetch else 0
+    stored = _fetch_and_store(service, conn, to_fetch, credentials) if to_fetch else 0
 
     db.set_state(conn, "last_history_id", latest_history_id)
     print(f"Stored {stored} messages. historyId now {latest_history_id}")
