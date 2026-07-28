@@ -32,15 +32,15 @@ def cmd_auth(args):
 
 
 def cmd_sync(args):
-    service = auth.get_service()
+    service, credentials = auth.get_service_and_credentials()
     conn = db.connect()
     db.init_db(conn)
 
     if args.full:
         query = None if args.all_mail else (args.query or DEFAULT_QUERY)
-        ingest.full_sync(service, conn, query=query, max_messages=args.limit)
+        ingest.full_sync(service, conn, credentials, query=query, max_messages=args.limit)
     else:
-        ingest.incremental_sync(service, conn)
+        ingest.incremental_sync(service, conn, credentials)
 
     conn.close()
 
