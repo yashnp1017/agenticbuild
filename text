@@ -1,0 +1,97 @@
+(.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py sync --full --limit 200
+Full sync for yashnp1017@gmail.com
+Query: newer_than:90d -category:promotions -category:social
+  listed 500 ids...
+Found 200 messages, 200 new
+Traceback (most recent call last):
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\cli.py", line 168, in <module>
+    main()
+    ~~~~^^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\cli.py", line 164, in main
+    args.func(args)
+    ~~~~~~~~~^^^^^^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\cli.py", line 41, in cmd_sync
+    ingest.full_sync(service, conn, query=query, max_messages=args.limit)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\ingest.py", line 184, in full_sync
+    stored = _fetch_and_store(service, conn, new_ids)
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\ingest.py", line 144, in _fetch_and_store
+    for i, raw in enumerate(pool.map(lambda m: _fetch_one(service, m), msg_ids), 1):
+                  ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\concurrent\futures\_base.py", line 625, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\concurrent\futures\_base.py", line 318, in _result_or_cancel
+    return fut.result(timeout)
+           ~~~~~~~~~~^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\concurrent\futures\_base.py", line 460, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\concurrent\futures\_base.py", line 402, in __get_result
+    raise self._exception
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\concurrent\futures\thread.py", line 59, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\ingest.py", line 144, in <lambda>
+    for i, raw in enumerate(pool.map(lambda m: _fetch_one(service, m), msg_ids), 1):
+                                               ~~~~~~~~~~^^^^^^^^^^^^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\ingest.py", line 106, in _fetch_one
+    .execute()
+     ~~~~~~~^^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\googleapiclient\_helpers.py", line 130, in positional_wrapper
+    return wrapped(*args, **kwargs)
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\googleapiclient\http.py", line 923, in execute
+    resp, content = _retry_request(
+                    ~~~~~~~~~~~~~~^
+        http,
+        ^^^^^
+    ...<7 lines>...
+        headers=self.headers,
+        ^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\googleapiclient\http.py", line 222, in _retry_request
+    raise exception
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\googleapiclient\http.py", line 191, in _retry_request
+    resp, content = http.request(uri, method, *args, **kwargs)
+                    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\google_auth_httplib2.py", line 214, in request
+    response, content = self.http.request(
+                        ~~~~~~~~~~~~~~~~~^
+        uri,
+        ^^^^
+    ...<5 lines>...
+        **kwargs
+        ^^^^^^^^
+    )
+    ^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\httplib2\__init__.py", line 1755, in request
+    (response, content) = self._request(
+                          ~~~~~~~~~~~~~^
+        conn, authority, uri, request_uri, method, body, headers, redirections, cachekey,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\httplib2\__init__.py", line 1475, in _request
+    (response, content) = self._conn_request(conn, request_uri, method, body, headers)
+                          ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main\.venv\Lib\site-packages\httplib2\__init__.py", line 1427, in _conn_request
+    response = conn.getresponse()
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\http\client.py", line 1459, in getresponse
+    response.begin()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\http\client.py", line 336, in begin
+    version, status, reason = self._read_status()
+                              ~~~~~~~~~~~~~~~~~^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\http\client.py", line 297, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\socket.py", line 723, in readinto
+    return self._sock.recv_into(b)
+           ~~~~~~~~~~~~~~~~~~~~^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\ssl.py", line 1304, in recv_into
+    return self.read(nbytes, buffer)
+           ~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\ssl.py", line 1138, in read
+    return self._sslobj.read(len, buffer)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+ssl.SSLError: [SSL: DECRYPTION_FAILED_OR_BAD_RECORD_MAC] decryption failed or bad record mac (_ssl.c:2660)
