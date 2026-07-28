@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Command line interface for the Gmail ingest layer.
+
+  python cli.py auth                     verify OAuth works
+  python cli.py sync --full              first run: walk the whole mailbox
+  python cli.py sync --full --limit 200  first run, capped (good for testing)
+  python cli.py sync                     incremental: only what's new
+  python cli.py stats                    what's in the local database
+  python cli.py show <message_id>        dump one stored message
+  python cli.py thread <thread_id>       dump a whole conversation
+"""
+
+import argparse
+import json
+import textwrap
+from datetime import datetime
+
+import auth
+import db
+import ingest
+
+# Reasonable default: recent mail, minus the obvious noise buckets.
+DEFAULT_QUERY = "newer_than:90d -category:promotions -category:social"
+
+
+def cmd_auth(args):
+    service = auth.get_service()
+    profile = service.users().getProfile(userId="me").execute()
+    print(f"Authenticated as : {profile['emailAddress']}")
+    print(f"Total messages   : {profile['messagesTotal']:,}")
+    print(f"Current historyId: {profile['historyId']}")
+
+
+def cmd_sync(args):
+    service = auth.get_service()
+    conn = db.connect()
+    db.init_db(conn)
+
+    if args.full:
+        query = None if args.all_mail else (args.query or DEFAULT_QUERY)
+        ingest.full_sync(service, conn, query=query, max_messages=args.limit)
+    else:
+        ingest.incremental_sync(service, conn)
+
+    conn.close()
+
+
+def cmd_stats(args):
+    conn = db.connect()
+    db.init_db(conn)
+
+    total = conn.execute("SELECT COUNT(*) FROM messages").fetchone()[0]
+    threads = conn.execute("SELECT COUNT(DISTINCT thread_id) FROM messages").fetchone()[0]
+
+    print(f"Messages : {total:,}")
+    print(f"Threads  : {threads:,}")
+
+    if total:
+        lo, hi = conn.execute(
+            "SELECT MIN(internal_date), MAX(internal_date) FROM messages"
+        ).fetchone()
+        fmt = lambda ms: datetime.fromtimestamp(ms / 1000).strftime("%Y-%m-%d")
+        print(f"Range    : {fmt(lo)} to {fmt(hi)}")
+
+        print("\nTop senders:")
+        rows = conn.execute(
+            """
+            SELECT from_email, COUNT(*) n FROM messages
+            WHERE from_email IS NOT NULL
+            GROUP BY from_email ORDER BY n DESC LIMIT 10
+            """
+        ).fetchall()
+        for r in rows:
+            print(f"  {r['n']:>5}  {r['from_email']}")
+
+    last_sync = db.get_state(conn, "last_full_sync")
+    history_id = db.get_state(conn, "last_history_id")
+    print(f"\nLast full sync: {last_sync or 'never'}")
+    print(f"historyId     : {history_id or 'none'}")
+
+    conn.close()
+
+
+def cmd_show(args):
+    conn = db.connect()
+    row = conn.execute("SELECT * FROM messages WHERE id = ?", (args.message_id,)).fetchone()
+
+    if not row:
+        print(f"No message {args.message_id} stored.")
+        return
+
+    when = datetime.fromtimestamp(row["internal_date"] / 1000)
+    print(f"From    : {row['from_name']} <{row['from_email']}>")
+    print(f"To      : {', '.join(json.loads(row['to_emails']))}")
+    print(f"Date    : {when:%Y-%m-%d %H:%M}")
+    print(f"Subject : {row['subject']}")
+    print(f"Labels  : {', '.join(json.loads(row['label_ids']))}")
+    print(f"Thread  : {row['thread_id']}")
+    print("-" * 70)
+    body = row["body_text"] or row["snippet"] or "(no text body)"
+    print(body[: args.chars])
+    if len(body) > args.chars:
+        print(f"\n... [{len(body) - args.chars:,} more characters]")
+
+    conn.close()
+
+
+def cmd_thread(args):
+    conn = db.connect()
+    rows = conn.execute(
+        "SELECT * FROM messages WHERE thread_id = ? ORDER BY internal_date",
+        (args.thread_id,),
+    ).fetchall()
+
+    if not rows:
+        print(f"No thread {args.thread_id} stored.")
+        return
+
+    print(f"Thread {args.thread_id} - {len(rows)} message(s)")
+    print(f"Subject: {rows[0]['subject']}\n")
+
+    for i, row in enumerate(rows, 1):
+        when = datetime.fromtimestamp(row["internal_date"] / 1000)
+        print("=" * 70)
+        print(f"[{i}] {row['from_email']}  {when:%Y-%m-%d %H:%M}")
+        print("=" * 70)
+        body = (row["body_text"] or row["snippet"] or "").strip()
+        print(textwrap.shorten(body, width=args.chars, placeholder=" ...") or "(empty)")
+        print()
+
+    conn.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Gmail ingest layer",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("auth", help="verify OAuth works").set_defaults(func=cmd_auth)
+
+    p_sync = sub.add_parser("sync", help="fetch messages")
+    p_sync.add_argument("--full", action="store_true", help="full sync instead of incremental")
+    p_sync.add_argument("--limit", type=int, help="cap number of messages (testing)")
+    p_sync.add_argument("--query", help=f"Gmail search query (default: {DEFAULT_QUERY!r})")
+    p_sync.add_argument("--all-mail", action="store_true", help="ignore default query, fetch everything")
+    p_sync.set_defaults(func=cmd_sync)
+
+    sub.add_parser("stats", help="local database summary").set_defaults(func=cmd_stats)
+
+    p_show = sub.add_parser("show", help="dump one message")
+    p_show.add_argument("message_id")
+    p_show.add_argument("--chars", type=int, default=2000)
+    p_show.set_defaults(func=cmd_show)
+
+    p_thread = sub.add_parser("thread", help="dump a conversation")
+    p_thread.add_argument("thread_id")
+    p_thread.add_argument("--chars", type=int, default=600)
+    p_thread.set_defaults(func=cmd_thread)
+
+    args = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()
