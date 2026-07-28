@@ -60,6 +60,18 @@ def get_service():
     return build("gmail", "v1", credentials=get_credentials(), cache_discovery=False)
 
 
+def get_service_and_credentials():
+    """Same as get_service(), but also returns the raw credentials.
+
+    ingest.py needs the credentials separately so each worker thread can
+    build its own private connection instead of sharing one service object
+    across threads (which corrupts concurrent requests - see ingest.py).
+    """
+    creds = get_credentials()
+    service = build("gmail", "v1", credentials=creds, cache_discovery=False)
+    return service, creds
+
+
 if __name__ == "__main__":
     service = get_service()
     profile = service.users().getProfile(userId="me").execute()
