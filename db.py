@@ -40,7 +40,33 @@ CREATE TABLE IF NOT EXISTS sync_state (
     value      TEXT,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- One row per conversation: the assembled, cleaned transcript that
+-- extraction actually reads.
+CREATE TABLE IF NOT EXISTS threads (
+    thread_id     TEXT PRIMARY KEY,
+    subject       TEXT,
+    participants  TEXT,               -- JSON array of email addresses
+    message_count INTEGER,
+    first_date    INTEGER,            -- epoch millis
+    last_date     INTEGER,
+    transcript    TEXT,               -- chronological, quotes/signatures stripped
+    char_count    INTEGER,
+    normalized_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_threads_last_date ON threads(last_date DESC);
+CREATE INDEX IF NOT EXISTS idx_threads_count     ON threads(message_count DESC);
 """
+
+# Columns added after the initial schema shipped. Applied on every init so an
+# existing mail.db picks them up without needing a re-sync.
+MIGRATIONS = [
+    ("messages", "clean_text",    "TEXT"),
+    ("messages", "clean_source",  "TEXT"),     # 'text' or 'html'
+    ("messages", "had_quote",     "INTEGER"),
+    ("messages", "had_signature", "INTEGER"),
+]
 
 
 def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
@@ -52,6 +78,13 @@ def connect(db_path: Path = DB_PATH) -> sqlite3.Connection:
 
 def init_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA)
+
+    # SQLite has no "ADD COLUMN IF NOT EXISTS", so check what's already there.
+    for table, column, coltype in MIGRATIONS:
+        existing = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if column not in existing:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+
     conn.commit()
 
 
