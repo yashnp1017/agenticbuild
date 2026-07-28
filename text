@@ -1,28 +1,19 @@
-(.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py sync --full --limit 200
-Full sync for yashnp1017@gmail.com
-Query: newer_than:90d -category:promotions -category:social
-  listed 500 ids...
-Found 200 messages, 200 new
-  stored 100/200
-  stored 200/200
-Stored 200 messages. historyId now 6633522
-
 (.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py stats
-Messages : 200
-Threads  : 189
-Range    : 2026-07-23 to 2026-07-28
+Messages : 3,685
+Threads  : 3,358
+Range    : 2026-04-29 to 2026-07-28
 
 Top senders:
-     47  noreply@jobright.ai
-     30  jobalerts-noreply@linkedin.com
-     18  dan@tldrnewsletter.com
-     10  noreply@redditmail.com
-      6  noreply@glassdoor.com
-      5  crew@morningbrew.com
-      5  jobs-noreply@linkedin.com
-      5  nytdirect@nytimes.com
-      4  access@interactive.wsj.com
-      4  info@marketing.mlbemail.com
+    867  noreply@jobright.ai
+    433  jobalerts-noreply@linkedin.com
+    208  dan@tldrnewsletter.com
+    191  yashnp1017@gmail.com
+    108  noreply@redditmail.com
+    102  jobs-noreply@linkedin.com
+     97  noreply@glassdoor.com
+     83  draftkings@auth.draftkings.com
+     76  newsletter@kith.com
+     75  access@interactive.wsj.com
 
-Last full sync: 2026-07-28 09:27:46
-historyId     : 6633522
+Last full sync: 2026-07-28 09:56:28
+historyId     : 6633720
