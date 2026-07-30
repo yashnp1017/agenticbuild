@@ -521,6 +521,7 @@ def normalize_all(conn, limit: int | None = None, rebuild: bool = False) -> dict
         "chars_before": 0,
         "chars_after": 0,
         "errors": 0,
+        "reextract_needed": 0,
     }
 
     where = "" if rebuild else "WHERE clean_text IS NULL"
@@ -604,12 +605,30 @@ def normalize_all(conn, limit: int | None = None, rebuild: bool = False) -> dict
 
         participants = sorted({m["from_email"] for m in msgs if m["from_email"]})
 
+        # INSERT OR REPLACE drops the whole row, so extraction tracking would
+        # silently reset on every rebuild. Preserve it when the transcript is
+        # unchanged - re-extracting identical text costs money for nothing.
+        # When the text really did change, clearing it is correct: any actions
+        # extracted from the old version need to be recomputed.
+        prior = conn.execute(
+            "SELECT transcript, extracted_at, skip_reason FROM threads WHERE thread_id = ?",
+            (thread_id,),
+        ).fetchone()
+
+        if prior and prior["transcript"] == transcript:
+            extracted_at, skip_reason = prior["extracted_at"], prior["skip_reason"]
+        else:
+            extracted_at, skip_reason = None, None
+            if prior and prior["extracted_at"]:
+                stats["reextract_needed"] += 1
+
         conn.execute(
             """
             INSERT OR REPLACE INTO threads
                 (thread_id, subject, participants, message_count,
-                 first_date, last_date, transcript, char_count, normalized_at)
-            VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+                 first_date, last_date, transcript, char_count, normalized_at,
+                 extracted_at, skip_reason)
+            VALUES (?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)
             """,
             (
                 thread_id,
@@ -620,6 +639,8 @@ def normalize_all(conn, limit: int | None = None, rebuild: bool = False) -> dict
                 msgs[-1]["internal_date"],
                 transcript,
                 len(transcript),
+                extracted_at,
+                skip_reason,
             ),
         )
 
