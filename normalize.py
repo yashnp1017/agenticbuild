@@ -19,6 +19,30 @@ from bs4 import BeautifulSoup
 
 import db
 
+# Click-tracking rewrites (SendGrid, Mailgun, etc.) turn every link - view
+# button, unsubscribe, social icons, footer links - into a single unbroken
+# token that can run 1,500-2,000+ characters. A handful of them in one email
+# outweighs the actual message by 100x, and unlike hidden CSS this shows up
+# in plain-text bodies too, so it has to be handled independently of the
+# HTML-vs-text path. Any single whitespace-delimited token this long is
+# link/tracking noise, never something a human typed.
+MAX_TOKEN_LEN = 120
+_LONG_TOKEN_RE = re.compile(r"\S{" + str(MAX_TOKEN_LEN) + r",}")
+
+
+def collapse_long_tokens(text: str) -> str:
+    """Replace any absurdly long unbroken token with a short placeholder."""
+    if not text:
+        return text
+
+    def _replace(match: re.Match) -> str:
+        token = match.group(0)
+        kind = "link" if token.lower().startswith(("http://", "https://")) else "token"
+        return f"[{kind}, {len(token):,} chars]"
+
+    return _LONG_TOKEN_RE.sub(_replace, text)
+
+
 # Marketing/security mail commonly hides a long "preheader" block via CSS so
 # the inbox preview line shows custom text instead of whatever's visually
 # first in the email. BeautifulSoup.get_text() has no concept of CSS, so a
@@ -412,6 +436,10 @@ def clean_message(body_text: str, body_html: str, sender_name: str | None = None
         source = "html"
 
     original_len = len(raw)
+
+    # Collapse tracking-link noise first - it's unrelated to quote/signature
+    # boundaries and would otherwise survive every other cleaning step intact.
+    raw = collapse_long_tokens(raw)
 
     text, had_quote = strip_quoted(raw)
 
