@@ -161,7 +161,10 @@ def cmd_extract(args):
     if args.me:
         db.set_state(conn, "user_email", args.me)
 
-    client = None if args.dry_run else Anthropic()
+    client = None if args.dry_run else Anthropic(
+        max_retries=5,     # SDK's own retry/backoff, handles transient
+        timeout=90.0,      # connection drops before our code ever sees them -
+    )                      # a corporate network is exactly what this is for
     stats = extract.extract_all(
         conn, client, days=args.days, limit=args.limit,
         rebuild=args.rebuild, dry_run=args.dry_run,
