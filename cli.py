@@ -101,6 +101,8 @@ def cmd_normalize(args):
     print(f"  empty after clean: {stats['empty_after_clean']:,}")
     if stats.get("errors"):
         print(f"  ERRORS (raw text kept): {stats['errors']:,}")
+    if stats.get("reextract_needed"):
+        print(f"  transcripts changed -> need re-extraction: {stats['reextract_needed']:,}")
     print(f"Threads built      : {stats['threads_built']:,}")
     print()
     print(f"Characters before  : {before:,}")
