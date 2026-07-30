@@ -1,2 +1,1 @@
-pip install huggingface-hub
-huggingface-cli download microsoft/Phi-3-mini-4k-instruct-gguf Phi-3-mini-4k-instruct-q4.gguf --local-dir C:\models
+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
