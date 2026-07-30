@@ -25,27 +25,77 @@ import db
 # display:none block is just as visible to it as real content - left
 # unhandled, one hidden block can outweigh the actual message by 100x.
 _HIDDEN_STYLE_RE = re.compile(
-    r"display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|max-height\s*:\s*0",
+    r"display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|max-height\s*:\s*0"
+    r"|opacity\s*:\s*0|mso-hide\s*:\s*all|width\s*:\s*0|height\s*:\s*0",
     re.IGNORECASE,
 )
 
+# Selectors inside a <style> block that hide their targets, e.g.
+#   .preview-text { display:none; max-height:0; }
+_CSS_RULE_RE = re.compile(r"([^{}]+)\{([^{}]*)\}", re.DOTALL)
+
+
+def _hidden_selectors(soup: BeautifulSoup) -> tuple[set[str], set[str]]:
+    """Class and id names that a <style> block marks as hidden.
+
+    Senders rarely inline display:none - they define a class in a stylesheet
+    and apply it, so inline-only checks miss the block entirely.
+    """
+    classes, ids = set(), set()
+
+    for style_tag in soup.find_all("style"):
+        css = style_tag.get_text() or ""
+        for selectors, body in _CSS_RULE_RE.findall(css):
+            if not _HIDDEN_STYLE_RE.search(body):
+                continue
+            for sel in selectors.split(","):
+                sel = sel.strip()
+                if sel.startswith("."):
+                    classes.add(sel[1:].split(":")[0].split(" ")[0])
+                elif sel.startswith("#"):
+                    ids.add(sel[1:].split(":")[0].split(" ")[0])
+
+    return classes, ids
+
 
 def _strip_hidden(soup: BeautifulSoup) -> None:
-    """Remove elements that are invisible to a human reader.
+    """Remove elements invisible to a human reader.
 
-    Defensive on tag.attrs: bs4's Tag.__init__ takes attrs=None by default,
-    and on some malformed real-world HTML (Outlook conditional comments,
-    broken nesting) a tag surfaces mid-parse with attrs=None rather than {}.
-    Calling tag.get(...) on that raises AttributeError deep inside bs4 -
-    hit on a real message in this mailbox, not reproducible from clean input.
+    Four mechanisms, because senders use all of them:
+      1. inline style="display:none"
+      2. a class/id whose rule in a <style> block hides it
+      3. the HTML `hidden` attribute
+      4. well-known preheader class-name conventions
+
+    Defensive on tag.attrs throughout: bs4's Tag.attrs can surface as None on
+    malformed real-world markup, and tag.get() then raises inside bs4.
     """
-    for tag in soup.find_all(style=True):
+    hidden_classes, hidden_ids = _hidden_selectors(soup)
+
+    for tag in soup.find_all(True):
         attrs = getattr(tag, "attrs", None) or {}
+
         if _HIDDEN_STYLE_RE.search(attrs.get("style") or ""):
             tag.decompose()
+            continue
 
-    # A common Outlook/Litmus convention for hiding preview text.
-    for tag in soup.find_all(class_=re.compile(r"preheader|hidden|display-none", re.IGNORECASE)):
+        if "hidden" in attrs:
+            tag.decompose()
+            continue
+
+        tag_classes = attrs.get("class") or []
+        if isinstance(tag_classes, str):
+            tag_classes = tag_classes.split()
+        if hidden_classes and set(tag_classes) & hidden_classes:
+            tag.decompose()
+            continue
+
+        if hidden_ids and (attrs.get("id") or "") in hidden_ids:
+            tag.decompose()
+            continue
+
+    # Well-known preheader conventions, independent of any stylesheet.
+    for tag in soup.find_all(class_=re.compile(r"preheader|preview-text|display-none", re.IGNORECASE)):
         tag.decompose()
 
 
@@ -64,11 +114,13 @@ def html_to_text(html: str) -> str:
 
     soup = BeautifulSoup(html, "html.parser")
 
+    # Must run BEFORE <style> tags are removed - it reads the stylesheet to
+    # find which classes are hidden.
+    _strip_hidden(soup)
+
     # Script/style content is never readable text.
     for tag in soup(["script", "style", "head", "meta", "title"]):
         tag.decompose()
-
-    _strip_hidden(soup)
 
     # Preserve block structure as newlines so paragraphs don't run together.
     for tag in soup(["br", "p", "div", "tr", "li", "h1", "h2", "h3", "h4"]):
