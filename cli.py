@@ -99,6 +99,8 @@ def cmd_normalize(args):
     print(f"  had signature    : {stats['had_signature']:,}")
     print(f"  had boilerplate  : {stats['had_boilerplate']:,}")
     print(f"  empty after clean: {stats['empty_after_clean']:,}")
+    if stats.get("errors"):
+        print(f"  ERRORS (raw text kept): {stats['errors']:,}")
     print(f"Threads built      : {stats['threads_built']:,}")
     print()
     print(f"Characters before  : {before:,}")
