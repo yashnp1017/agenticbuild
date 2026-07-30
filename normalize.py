@@ -19,6 +19,28 @@ from bs4 import BeautifulSoup
 
 import db
 
+# Marketing/security mail commonly hides a long "preheader" block via CSS so
+# the inbox preview line shows custom text instead of whatever's visually
+# first in the email. BeautifulSoup.get_text() has no concept of CSS, so a
+# display:none block is just as visible to it as real content - left
+# unhandled, one hidden block can outweigh the actual message by 100x.
+_HIDDEN_STYLE_RE = re.compile(
+    r"display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|max-height\s*:\s*0",
+    re.IGNORECASE,
+)
+
+
+def _strip_hidden(soup: BeautifulSoup) -> None:
+    """Remove elements that are invisible to a human reader."""
+    for tag in soup.find_all(style=True):
+        if _HIDDEN_STYLE_RE.search(tag.get("style", "")):
+            tag.decompose()
+
+    # A common Outlook/Litmus convention for hiding preview text.
+    for tag in soup.find_all(class_=re.compile(r"preheader|hidden|display-none", re.IGNORECASE)):
+        tag.decompose()
+
+
 # --------------------------------------------------------------------------
 # HTML -> text
 # --------------------------------------------------------------------------
@@ -37,6 +59,8 @@ def html_to_text(html: str) -> str:
     # Script/style content is never readable text.
     for tag in soup(["script", "style", "head", "meta", "title"]):
         tag.decompose()
+
+    _strip_hidden(soup)
 
     # Preserve block structure as newlines so paragraphs don't run together.
     for tag in soup(["br", "p", "div", "tr", "li", "h1", "h2", "h3", "h4"]):
