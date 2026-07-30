@@ -45,7 +45,7 @@ MAX_TRANSCRIPT_CHARS = 12000    # long threads get truncated from the middle
 
 class ExtractedAction(BaseModel):
     action: str = Field(min_length=3)
-    action_type: Literal["reply", "decision", "deliverable", "meeting", "fyi"]
+    action_type: Literal["reply", "decision", "deliverable", "meeting", "task", "fyi"]
     owner: Literal["user", "other", "unclear"]
     deadline_text: str | None = None
     deadline_date: str | None = None
@@ -202,6 +202,18 @@ An action is something THE USER must personally do, decide, or respond to. Examp
 - A decision is required from the user
 - A meeting needs scheduling, confirming, or preparing for
 - The user committed to doing something and has not confirmed it is done
+- An administrative or one-off task the user needs to complete (submit a form,
+  update a setting, log hours, follow a new process going forward)
+
+ACTION_TYPE - pick exactly one:
+- "reply"       a question or message is waiting on a response from the user
+- "decision"    the user must choose or approve something
+- "deliverable" the user owes a document, file, or piece of work to someone
+- "meeting"     something to schedule, confirm, or prepare for
+- "task"        a concrete to-do that isn't owed to a specific person - forms,
+                 account setup, logging hours, process/policy changes to follow
+- "fyi"         informational only, no response required (rare - most fyi mail
+                 should return requires_action: false instead of an fyi action)
 
 WHAT IS NOT AN ACTION
 - Newsletters, job alerts, marketing, notifications, receipts, automated mail
