@@ -57,6 +57,32 @@ CREATE TABLE IF NOT EXISTS threads (
 
 CREATE INDEX IF NOT EXISTS idx_threads_last_date ON threads(last_date DESC);
 CREATE INDEX IF NOT EXISTS idx_threads_count     ON threads(message_count DESC);
+
+-- The action register. One row per extracted obligation.
+-- Every row must trace back to a verbatim quote in a specific message.
+CREATE TABLE IF NOT EXISTS actions (
+    id                TEXT PRIMARY KEY,   -- deterministic hash, so re-runs don't duplicate
+    thread_id         TEXT NOT NULL,
+    source_message_id TEXT,               -- resolved in code by locating the evidence quote
+    action            TEXT NOT NULL,
+    action_type       TEXT,               -- reply | decision | deliverable | meeting | fyi
+    owner             TEXT,               -- user | other | unclear
+    deadline_text     TEXT,               -- verbatim span from the email, or NULL
+    deadline_date     TEXT,               -- ISO date, or NULL
+    urgency           TEXT,               -- high | medium | low
+    confidence        REAL,
+    evidence_quote    TEXT NOT NULL,      -- must appear verbatim in the source message
+    reasoning         TEXT,
+    status            TEXT DEFAULT 'open',-- open | done | dismissed | snoozed
+    review_flag       INTEGER DEFAULT 0,  -- 1 = below confidence threshold, needs a human
+    extracted_at      TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (thread_id) REFERENCES threads(thread_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_actions_status   ON actions(status);
+CREATE INDEX IF NOT EXISTS idx_actions_deadline ON actions(deadline_date);
+CREATE INDEX IF NOT EXISTS idx_actions_thread   ON actions(thread_id);
 """
 
 # Columns added after the initial schema shipped. Applied on every init so an
@@ -66,6 +92,8 @@ MIGRATIONS = [
     ("messages", "clean_source",  "TEXT"),     # 'text' or 'html'
     ("messages", "had_quote",     "INTEGER"),
     ("messages", "had_signature", "INTEGER"),
+    ("threads",  "extracted_at",  "TEXT"),     # NULL = not yet run through extraction
+    ("threads",  "skip_reason",   "TEXT"),     # why the prefilter excluded it
 ]
 
 
