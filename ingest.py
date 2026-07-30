@@ -196,6 +196,7 @@ def full_sync(
     """
     profile = service.users().getProfile(userId="me").execute()
     start_history_id = profile["historyId"]
+    db.set_state(conn, "user_email", profile["emailAddress"])
 
     print(f"Full sync for {profile['emailAddress']}")
     if query:
