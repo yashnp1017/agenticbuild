@@ -29,11 +29,20 @@ import db
 MAX_TOKEN_LEN = 120
 _LONG_TOKEN_RE = re.compile(r"\S{" + str(MAX_TOKEN_LEN) + r",}")
 
+# Zero-width Unicode characters used the same way as CSS display:none - to
+# pad an invisible preheader block that controls the inbox preview snippet.
+# They render as nothing but count as real characters, so left alone they
+# accumulate into pages of invisible noise (seen directly in a real thread:
+# repeated U+200C blocks at the top of every DraftKings notification).
+_ZERO_WIDTH_RE = re.compile(r"[\u200b\u200c\u200d\u2060\ufeff]")
+
 
 def collapse_long_tokens(text: str) -> str:
     """Replace any absurdly long unbroken token with a short placeholder."""
     if not text:
         return text
+
+    text = _ZERO_WIDTH_RE.sub("", text)
 
     def _replace(match: re.Match) -> str:
         token = match.group(0)
