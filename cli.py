@@ -12,6 +12,7 @@
 
 import argparse
 import json
+import os
 import textwrap
 from datetime import datetime
 
@@ -140,6 +141,106 @@ def cmd_threads(args):
     conn.close()
 
 
+def cmd_extract(args):
+    import extract
+    from anthropic import Anthropic
+
+    if not args.dry_run and not os.environ.get("ANTHROPIC_API_KEY"):
+        print("ANTHROPIC_API_KEY is not set.")
+        print("  Windows : setx ANTHROPIC_API_KEY \"sk-ant-...\"  (then reopen the terminal)")
+        print("  Mac/Linux: export ANTHROPIC_API_KEY=sk-ant-...")
+        return
+
+    conn = db.connect()
+    db.init_db(conn)
+
+    if args.me:
+        db.set_state(conn, "user_email", args.me)
+
+    client = None if args.dry_run else Anthropic()
+    stats = extract.extract_all(
+        conn, client, days=args.days, limit=args.limit,
+        rebuild=args.rebuild, dry_run=args.dry_run,
+    )
+
+    if not args.dry_run:
+        print()
+        print(f"Threads sent to model : {stats['sent_to_model']:,}")
+        print(f"  no action found     : {stats['no_action_found']:,}")
+        print(f"Actions proposed      : {stats['actions_proposed']:,}")
+        print(f"  stored              : {stats['actions_stored']:,}")
+        print(f"  rejected            : {stats['actions_rejected']:,}")
+        print(f"  flagged for review  : {stats['flagged_for_review']:,}")
+
+        if stats["rejection_reasons"]:
+            print("\nRejections by reason:")
+            for reason, n in sorted(stats["rejection_reasons"].items(), key=lambda x: -x[1]):
+                print(f"  {n:>4}  {reason}")
+
+    conn.close()
+
+
+def cmd_actions(args):
+    conn = db.connect()
+    db.init_db(conn)
+
+    where = ["a.status = ?"]
+    params = [args.status]
+    if not args.include_review:
+        where.append("a.review_flag = 0")
+
+    rows = conn.execute(
+        f"""
+        SELECT a.*, t.subject
+          FROM actions a
+          LEFT JOIN threads t ON t.thread_id = a.thread_id
+         WHERE {' AND '.join(where)}
+         ORDER BY
+            CASE a.urgency WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END,
+            a.deadline_date IS NULL,
+            a.deadline_date
+         LIMIT ?
+        """,
+        (*params, args.limit),
+    ).fetchall()
+
+    if not rows:
+        print(f"No actions with status '{args.status}'. Run 'python cli.py extract' first.")
+        return
+
+    print(f"{len(rows)} action(s), status={args.status}\n")
+
+    for r in rows:
+        flag = "  [REVIEW]" if r["review_flag"] else ""
+        due = r["deadline_date"] or "no deadline"
+        print(f"[{r['urgency'].upper():<6}] {r['action']}{flag}")
+        print(f"          due: {due:<12}  conf: {r['confidence']:.2f}  type: {r['action_type']}")
+        print(f"          re: {(r['subject'] or '')[:60]}")
+        print(f"          \"{r['evidence_quote'][:90]}\"")
+        print(f"          action_id: {r['id']}  msg: {r['source_message_id']}")
+        print()
+
+    conn.close()
+
+
+def cmd_action_status(args):
+    conn = db.connect()
+    db.init_db(conn)
+
+    cur = conn.execute(
+        "UPDATE actions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (args.new_status, args.action_id),
+    )
+    conn.commit()
+
+    if cur.rowcount:
+        print(f"Action {args.action_id} -> {args.new_status}")
+    else:
+        print(f"No action with id {args.action_id}")
+
+    conn.close()
+
+
 def cmd_show(args):
     conn = db.connect()
     row = conn.execute("SELECT * FROM messages WHERE id = ?", (args.message_id,)).fetchone()
@@ -240,6 +341,25 @@ def main():
     p_threads.add_argument("--min-messages", type=int, default=2,
                            help="only threads with at least this many messages (default 2)")
     p_threads.set_defaults(func=cmd_threads)
+
+    p_ext = sub.add_parser("extract", help="extract actions from thread transcripts")
+    p_ext.add_argument("--days", type=int, default=7, help="look back this many days (default 7)")
+    p_ext.add_argument("--limit", type=int, help="cap threads processed (testing)")
+    p_ext.add_argument("--rebuild", action="store_true", help="re-extract already-processed threads")
+    p_ext.add_argument("--dry-run", action="store_true", help="show what would be sent, make no API calls")
+    p_ext.add_argument("--me", help="override the mailbox owner address")
+    p_ext.set_defaults(func=cmd_extract)
+
+    p_act = sub.add_parser("actions", help="show the action register")
+    p_act.add_argument("--status", default="open", choices=["open", "done", "dismissed", "snoozed"])
+    p_act.add_argument("--limit", type=int, default=25)
+    p_act.add_argument("--include-review", action="store_true", help="include low-confidence items")
+    p_act.set_defaults(func=cmd_actions)
+
+    p_st = sub.add_parser("set-status", help="mark an action done/dismissed/snoozed")
+    p_st.add_argument("action_id")
+    p_st.add_argument("new_status", choices=["open", "done", "dismissed", "snoozed"])
+    p_st.set_defaults(func=cmd_action_status)
 
     p_show = sub.add_parser("show", help="dump one message")
     p_show.add_argument("message_id")
