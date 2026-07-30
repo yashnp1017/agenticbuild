@@ -31,9 +31,17 @@ _HIDDEN_STYLE_RE = re.compile(
 
 
 def _strip_hidden(soup: BeautifulSoup) -> None:
-    """Remove elements that are invisible to a human reader."""
+    """Remove elements that are invisible to a human reader.
+
+    Defensive on tag.attrs: bs4's Tag.__init__ takes attrs=None by default,
+    and on some malformed real-world HTML (Outlook conditional comments,
+    broken nesting) a tag surfaces mid-parse with attrs=None rather than {}.
+    Calling tag.get(...) on that raises AttributeError deep inside bs4 -
+    hit on a real message in this mailbox, not reproducible from clean input.
+    """
     for tag in soup.find_all(style=True):
-        if _HIDDEN_STYLE_RE.search(tag.get("style", "")):
+        attrs = getattr(tag, "attrs", None) or {}
+        if _HIDDEN_STYLE_RE.search(attrs.get("style") or ""):
             tag.decompose()
 
     # A common Outlook/Litmus convention for hiding preview text.
@@ -423,6 +431,7 @@ def normalize_all(conn, limit: int | None = None, rebuild: bool = False) -> dict
         "threads_built": 0,
         "chars_before": 0,
         "chars_after": 0,
+        "errors": 0,
     }
 
     where = "" if rebuild else "WHERE clean_text IS NULL"
@@ -434,7 +443,21 @@ def normalize_all(conn, limit: int | None = None, rebuild: bool = False) -> dict
     print(f"Cleaning {len(rows):,} messages...")
 
     for i, row in enumerate(rows, 1):
-        result = clean_message(row["body_text"], row["body_html"], row["from_name"])
+        try:
+            result = clean_message(row["body_text"], row["body_html"], row["from_name"])
+        except Exception as e:
+            # One malformed email must never take down cleaning for the rest
+            # of the mailbox. Fall back to the raw text untouched, flag it,
+            # and keep going - this row can be revisited with --rebuild once
+            # the underlying case is understood.
+            stats["errors"] += 1
+            print(f"  ! {row['id']}: {type(e).__name__}: {e} - keeping raw text")
+            fallback = (row["body_text"] or "").strip()
+            result = {
+                "clean_text": fallback, "source": "error_fallback",
+                "original_len": len(fallback), "clean_len": len(fallback),
+                "had_quote": False, "had_signature": False, "had_boilerplate": False,
+            }
 
         conn.execute(
             """
