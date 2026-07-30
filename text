@@ -1,3 +1,28 @@
+(.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py threads --min-messages 1 --limit 20
+messages    chars  last         thread_id            subject
+----------------------------------------------------------------------------------------------------
+      13    3,138  2026-07-17   19f43d4f47f22d2f     Re: New Grad FDE
+      11   61,910  2026-06-20   19ee0d59ac781d19     You have logged into DraftKings.
+      11   61,904  2026-06-17   19ed1cd8f5a1afa9     You have logged into DraftKings.
+       9    1,578  2026-06-23   19ecc78c69b07ed7     Internship
+       9    1,848  2026-06-10   19e936d11cb4246a     Details Needed
+       8    1,142  2026-06-30   19f19722f7e24947     Laptop
+       7   37,882  2026-07-01   19f19b7ab6d0f67b     You have logged into DraftKings.
+       6   33,765  2026-07-11   19f52189d9b52a02     You have logged into DraftKings.
+       5    5,422  2026-06-29   19f127d0eedb970a     Welcome to Coforge – Complete Your I-9 Form
+       5      302  2026-06-11   19eb2948b9e33074     Discussion with Yash Patel
+       5    2,027  2026-06-11   19eb69143d3a2d6a     Connect Toady
+       4    3,335  2026-07-21   19f0356650b8fe1f     Welcome Aboard..!
+       4      935  2026-07-15   19f611abaa7d58a2     Welcome to Cluely from the CEO
+       4   21,645  2026-07-05   19f3445424ac5f3a     You have logged into DraftKings.
+       4    1,242  2026-06-27   19effa2d5cef3baa     Laptop
+       4      603  2026-06-24   19efa241e444f37e     Internship Offer - Yash Patel
+       4    1,049  2026-06-22   19ef02513c6cac5d     Security alert for bdubsmygoat466@gmail.com
+       4   22,507  2026-06-18   19edd26d18a3138c     You have logged into DraftKings.
+       4    3,595  2026-06-18   19e85dfcbc61a308     Internship Positions
+       4   22,505  2026-06-15   19ecbcb6e956fa19     You have logged into DraftKings.
+
+(.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py inspect 19ee0d59ac781d19
 Thread 19ee0d59ac781d19 - 11 message(s)
 
 #   source          raw_text  raw_html     clean  from
@@ -71,3 +96,80 @@ Eligibility restrictions apply. Terms: draftkings.com/sportsbook.
 On behalf of Boo
 
 ... [4,059 more characters]
+
+(.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py normalize --rebuild
+Cleaning 3,685 messages...
+  cleaned 500/3,685
+  cleaned 1,000/3,685
+  cleaned 1,500/3,685
+  cleaned 2,000/3,685
+  cleaned 2,500/3,685
+  cleaned 3,000/3,685
+  cleaned 3,500/3,685
+Assembling thread transcripts...
+  built 500/3,358
+  built 1,000/3,358
+  built 1,500/3,358
+  built 2,000/3,358
+  built 2,500/3,358
+  built 3,000/3,358
+
+Messages cleaned   : 3,685
+  from HTML body   : 1,638
+  had quoted reply : 857
+  had signature    : 460
+  had boilerplate  : 552
+  empty after clean: 308
+Threads built      : 3,358
+
+Characters before  : 19,119,791
+Characters after   : 8,505,297
+Reduction          : 55.5%
+
+(.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py threads --min-messages 1 --limit 20
+messages    chars  last         thread_id            subject
+----------------------------------------------------------------------------------------------------
+      13    3,138  2026-07-17   19f43d4f47f22d2f     Re: New Grad FDE
+      11   58,005  2026-06-20   19ee0d59ac781d19     You have logged into DraftKings.
+      11   57,999  2026-06-17   19ed1cd8f5a1afa9     You have logged into DraftKings.
+       9    1,578  2026-06-23   19ecc78c69b07ed7     Internship
+       9    1,848  2026-06-10   19e936d11cb4246a     Details Needed
+       8    1,142  2026-06-30   19f19722f7e24947     Laptop
+       7   35,397  2026-07-01   19f19b7ab6d0f67b     You have logged into DraftKings.
+       6   31,635  2026-07-11   19f52189d9b52a02     You have logged into DraftKings.
+       5    5,422  2026-06-29   19f127d0eedb970a     Welcome to Coforge – Complete Your I-9 Form
+       5      302  2026-06-11   19eb2948b9e33074     Discussion with Yash Patel
+       5    2,027  2026-06-11   19eb69143d3a2d6a     Connect Toady
+       4    3,335  2026-07-21   19f0356650b8fe1f     Welcome Aboard..!
+       4      935  2026-07-15   19f611abaa7d58a2     Welcome to Cluely from the CEO
+       4   20,225  2026-07-05   19f3445424ac5f3a     You have logged into DraftKings.
+       4    1,242  2026-06-27   19effa2d5cef3baa     Laptop
+       4      603  2026-06-24   19efa241e444f37e     Internship Offer - Yash Patel
+       4    1,049  2026-06-22   19ef02513c6cac5d     Security alert for bdubsmygoat466@gmail.com
+       4   21,087  2026-06-18   19edd26d18a3138c     You have logged into DraftKings.
+       4    3,595  2026-06-18   19e85dfcbc61a308     Internship Positions
+       4   21,085  2026-06-15   19ecbcb6e956fa19     You have logged into DraftKings.
+
+(.venv) C:\Users\Yash.1.Patel\Downloads\agenticbuild-main\agenticbuild-main>python cli.py threads --min-messages 1 --limit 20
+messages    chars  last         thread_id            subject
+----------------------------------------------------------------------------------------------------
+      13    3,138  2026-07-17   19f43d4f47f22d2f     Re: New Grad FDE
+      11   58,005  2026-06-20   19ee0d59ac781d19     You have logged into DraftKings.
+      11   57,999  2026-06-17   19ed1cd8f5a1afa9     You have logged into DraftKings.
+       9    1,578  2026-06-23   19ecc78c69b07ed7     Internship
+       9    1,848  2026-06-10   19e936d11cb4246a     Details Needed
+       8    1,142  2026-06-30   19f19722f7e24947     Laptop
+       7   35,397  2026-07-01   19f19b7ab6d0f67b     You have logged into DraftKings.
+       6   31,635  2026-07-11   19f52189d9b52a02     You have logged into DraftKings.
+       5    5,422  2026-06-29   19f127d0eedb970a     Welcome to Coforge – Complete Your I-9 Form
+       5      302  2026-06-11   19eb2948b9e33074     Discussion with Yash Patel
+       5    2,027  2026-06-11   19eb69143d3a2d6a     Connect Toady
+       4    3,335  2026-07-21   19f0356650b8fe1f     Welcome Aboard..!
+       4      935  2026-07-15   19f611abaa7d58a2     Welcome to Cluely from the CEO
+       4   20,225  2026-07-05   19f3445424ac5f3a     You have logged into DraftKings.
+       4    1,242  2026-06-27   19effa2d5cef3baa     Laptop
+       4      603  2026-06-24   19efa241e444f37e     Internship Offer - Yash Patel
+       4    1,049  2026-06-22   19ef02513c6cac5d     Security alert for bdubsmygoat466@gmail.com
+       4   21,087  2026-06-18   19edd26d18a3138c     You have logged into DraftKings.
+       4    3,595  2026-06-18   19e85dfcbc61a308     Internship Positions
+       4   21,085  2026-06-15   19ecbcb6e956fa19     You have logged into DraftKings.
