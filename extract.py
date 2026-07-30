@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field, ValidationError
 import db
 
 MODEL = os.environ.get("EXTRACTION_MODEL", "claude-sonnet-5")
-MAX_WORKERS = 4
+MAX_WORKERS = int(os.environ.get("EXTRACTION_WORKERS", "2"))
 CONFIDENCE_THRESHOLD = 0.6      # below this, action goes to the review bucket
 MAX_TRANSCRIPT_CHARS = 12000    # long threads get truncated from the middle
 
@@ -365,9 +365,10 @@ def parse_response(text: str) -> ExtractionResult:
 
 
 def extract_thread(client: Anthropic, thread: dict, context: dict, user_email: str,
-                   retries: int = 2) -> ExtractionResult | None:
+                   retries: int = 3) -> ExtractionResult | None:
     """One API call for one thread."""
     prompt = build_user_prompt(thread, context, user_email)
+    last_body = None
 
     for attempt in range(retries + 1):
         try:
@@ -378,17 +379,25 @@ def extract_thread(client: Anthropic, thread: dict, context: dict, user_email: s
                 messages=[{"role": "user", "content": prompt}],
             )
             body = "".join(b.text for b in response.content if b.type == "text")
+            last_body = body
             return parse_response(body)
 
         except (json.JSONDecodeError, ValidationError) as e:
             if attempt < retries:
+                time.sleep(1)
                 continue
+            # Print what the model actually sent back - "unparseable" alone
+            # doesn't say whether it added prose, used the wrong enum value,
+            # or something else. Seeing the real text is how you fix the
+            # prompt instead of guessing at it.
+            snippet = (last_body or "")[:250].replace("\n", " ")
             print(f"  ! {thread['thread_id']}: unparseable response ({type(e).__name__})")
+            print(f"      raw: {snippet}{'...' if last_body and len(last_body) > 250 else ''}")
             return None
 
         except Exception as e:
             if attempt < retries:
-                time.sleep(2 ** attempt)
+                time.sleep(2 ** attempt)  # 1s, 2s, 4s, 8s
                 continue
             print(f"  ! {thread['thread_id']}: {type(e).__name__}: {e}")
             return None
