@@ -243,6 +243,53 @@ def cmd_action_status(args):
     conn.close()
 
 
+def cmd_inspect(args):
+    """Diagnose where a thread's characters actually come from."""
+    conn = db.connect()
+    db.init_db(conn)
+
+    rows = conn.execute(
+        """
+        SELECT id, from_email, internal_date, clean_source,
+               LENGTH(body_text) AS raw_text_len,
+               LENGTH(body_html) AS raw_html_len,
+               LENGTH(clean_text) AS clean_len,
+               body_html, clean_text
+          FROM messages
+         WHERE thread_id = ?
+         ORDER BY internal_date
+        """,
+        (args.thread_id,),
+    ).fetchall()
+
+    if not rows:
+        print(f"No thread {args.thread_id} stored.")
+        return
+
+    print(f"Thread {args.thread_id} - {len(rows)} message(s)\n")
+    print(f"{'#':<3} {'source':<14} {'raw_text':>9} {'raw_html':>9} {'clean':>9}  from")
+    print("-" * 78)
+
+    for i, r in enumerate(rows, 1):
+        print(f"{i:<3} {r['clean_source'] or '-':<14} "
+              f"{r['raw_text_len'] or 0:>9,} {r['raw_html_len'] or 0:>9,} "
+              f"{r['clean_len'] or 0:>9,}  {(r['from_email'] or '')[:30]}")
+
+    total_clean = sum(r["clean_len"] or 0 for r in rows)
+    print(f"\nTotal clean: {total_clean:,} chars")
+
+    # Show what survived cleaning on the worst offender, so we can see
+    # whether it is hidden text, legal boilerplate, or genuine content.
+    worst = max(rows, key=lambda r: r["clean_len"] or 0)
+    print(f"\nLargest message after cleaning ({worst['clean_len']:,} chars):")
+    print("-" * 78)
+    print((worst["clean_text"] or "")[: args.chars])
+    if (worst["clean_len"] or 0) > args.chars:
+        print(f"\n... [{worst['clean_len'] - args.chars:,} more characters]")
+
+    conn.close()
+
+
 def cmd_show(args):
     conn = db.connect()
     row = conn.execute("SELECT * FROM messages WHERE id = ?", (args.message_id,)).fetchone()
@@ -367,6 +414,11 @@ def main():
     p_show.add_argument("message_id")
     p_show.add_argument("--chars", type=int, default=2000)
     p_show.set_defaults(func=cmd_show)
+
+    p_insp = sub.add_parser("inspect", help="diagnose where a thread's characters come from")
+    p_insp.add_argument("thread_id")
+    p_insp.add_argument("--chars", type=int, default=1500)
+    p_insp.set_defaults(func=cmd_inspect)
 
     p_thread = sub.add_parser("thread", help="dump a conversation (cleaned transcript)")
     p_thread.add_argument("thread_id")
