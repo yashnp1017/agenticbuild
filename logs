@@ -1,0 +1,8 @@
+PS C:\Users\Yash.1.Patel\Downloads\Vantage-yash-vantage-fixes\Vantage-yash-vantage-fixes> powershell -ExecutionPolicy Bypass -File scripts\run-native.ps1 setup
+vantage: PostgreSQL binaries not found - downloading portable binaries (~350 MB, no admin needed)
+vantage: extracting
+vantage: automatic download failed (Cannot find path 'C:\Users\Yash.1.Patel\Downloads\Vantage-yash-vantage-fixes\Vantage-yash-vantage-fixes\.native\pgsql\bin\clusterdb.exe' because it does not exist.).
+vantage: Download the 'Windows x86-64' binaries zip manually from:
+vantage:   https://www.enterprisedb.com/download-postgresql-binaries
+vantage: Extract it so that C:\Users\Yash.1.Patel\Downloads\Vantage-yash-vantage-fixes\Vantage-yash-vantage-fixes\.native\pgsql\bin\initdb.exe exists (the zip contains a 'pgsql' folder - place it at C:\Users\Yash.1.Patel\Downloads\Vantage-yash-vantage-fixes\Vantage-yash-vantage-fixes\.native), then re-run setup.
+PS C:\Users\Yash.1.Patel\Downloads\Vantage-yash-vantage-fixes\Vantage-yash-vantage-fixes>
