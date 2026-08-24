@@ -1,3 +1,4 @@
 Remove-Item -Recurse -Force C:\Users\Anirban.1.B\vantage\backend\.venv
 powershell -ExecutionPolicy Bypass -File scripts\run-native.ps1 setup
 rmdir /s /q C:\Users\Anirban.1.B\vantage\backend\.venv
+move "C:\Users\Anirban.1.B\OneDrive - Coforge Limited\Documents\Consulting and AI\Vantage-yash-vantage-fixes (2)\Vantage-yash-vantage-fixes" C:\Users\Anirban.1.B\vantage
