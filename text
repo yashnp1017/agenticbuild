@@ -8,3 +8,26 @@ V:
 rmdir /s /q V:\backend\.venv
 dir .native\pgsql\bin\initdb.exe     (must exist — if not, bring the pgsql folder into this copy's .native first)
 powershell -ExecutionPolicy Bypass -File scripts\run-native.ps1 setup
+
+
+Remove-Item -Recurse -Force
+ 
+rmdir /s /q C:\Users\Anirban.1.B\vantage\backend\.venv
+ 
+move "C:\Users\Anirban.1.B\OneDrive - Coforge Limited\Documents\Consulting and AI\Vantage-yash-vantage-fixes (2)\Vantage-yash-vantage-fixes" C:\Users\Anirban.1.B\vantage
+ 
+cd Vantage-yash-vantage-fixes
+subst V: "%cd%"
+
+V:
+
+rmdir /s /q V:\backend\.venv
+
+dir .native\pgsql\bin\initdb.exe
+ 
+powershell -ExecutionPolicy Bypass -File scripts\run-native.ps1 setup
+ 
+powershell -ExecutionPolicy Bypass -File scripts\run-native.ps1 start
+ 
+http://localhost:8787
+ 
